@@ -19,3 +19,5 @@ W \s+
 %require tarrow
 %require tapp
 %require tpure
+
+%require invoke
