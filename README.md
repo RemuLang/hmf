@@ -4,9 +4,9 @@ HMF for higher rank polymorphisms.
 
 Use `python repl.py` to experiment with the interactive type inference.
 
-## HMF AJI
+## The Problem of HRT By HMF 
 
-However, I finally think this is not what I want, the annotation is verbose and weak.
+However, I finally think this might not be what I want, the annotation is verbose and weak.
  
 The reason why:
 **I have to write this**:
