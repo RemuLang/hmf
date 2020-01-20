@@ -1,0 +1,44 @@
+START : <BOF> expr <EOF> {$1};
+
+ID   : <ID> { *$0 };
+
+expr : ann { $0 }
+     | 'let' ID '=' expr 'in' expr { ELet($1, $3, $5) }
+     | 'fun' param '=>' expr       { EFun($1, $3) }
+     ;
+
+
+param : ID                   { ($0, None) }
+      | '(' ID ':' type ')'  { ($1, $3) }
+      ;
+
+ann  :
+     | call_expr    { $0 }
+     | ann ':' type { EAnn($0, $2()) }
+     ;
+
+call_expr : atom          { $0 }
+          | call_expr atom { EApp($0, $1) }
+          ;
+
+atom      : <INT>  { EInt(int(*$0)) }
+          | ID     { EVar($0) }
+          | 'omit' { EOmit()  }
+          | '(' expr ')' { $1 }
+          ;
+
+type : 'forall' list(ID) '.' type  { tforall($1, $3) }
+     | arrow_type                  { $0 }
+     ;
+
+arrow_type : type_app              { $0 }
+           | type_app '->' type    { tarrow($0, $1) }
+           ;
+
+type_app : type_app atom_type      { tapp($0, $1) }
+         | atom_type               { $0 }
+         ;
+
+atom_type : '(' type ')'   { $1 }
+          | ID             { tpure($0) }
+          ;
