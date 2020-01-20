@@ -1,11 +1,11 @@
-from hmf.infer import Env, infer
+from hmf.propagate import Env, infer_top as infer
 from hmf.pretty import ppt
 from hmf.parser import parse
 from pygments.lexers.html import RegexLexer
 from pygments import token
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.completion import WordCompleter
-from prompt_toolkit.shortcuts import prompt, PromptSession
+from prompt_toolkit.shortcuts import PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
 import re
 

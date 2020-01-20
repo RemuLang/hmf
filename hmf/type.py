@@ -67,7 +67,7 @@ TVar = Union[Unbound, Gen, Link, Bound]
 def unlink(t: Ty):
     if isinstance(t, Var) and isinstance(t.ref, Link):
         ty = unlink(t.ref.ty)
-        t.ref = ty
+        t.ref = Link(ty)
         return ty
     return t
 

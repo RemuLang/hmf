@@ -53,7 +53,7 @@ def ppt_io(t: Ty, io: StringIO, miss: MissingDict):
         if isinstance(ref, Gen):
             io.write('gen<')
             return io.write(miss[ref.id])
-        raise
+        raise TypeError(type(ref))
     if isinstance(t, App):
         io.write('(')
         ppt_io(t.f, io, miss)
