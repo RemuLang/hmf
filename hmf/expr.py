@@ -14,14 +14,17 @@ class ELet:
 
 @dataclass(order=True, frozen=True)
 class EFun:
-    param: str
+    param: Tuple[str, Optional[AnnType]]
     body: Expr
 
 
 @dataclass(order=True, frozen=True)
 class EAnn:
     expr: Expr
-    ann: Ty
+    ann: AnnType
+
+
+AnnType = Tuple[List[object], Ty]
 
 
 @dataclass(order=True, frozen=True)
@@ -72,3 +75,9 @@ def tpure(n):
 
 def invoke(b):
     return b({})
+
+
+def some(lst, b):
+    ids = [object() for _ in lst]
+    env = {n: Var(Bound(id)) for id, n in zip(ids, lst)}
+    return ids, b(env)

@@ -1,5 +1,21 @@
 from hmf.type import *
+from hmf.expr import *
+from hmf.scope import Scope, Sym
+
 from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Env:
+    types: Dict[Sym, Ty]
+    scope: Scope
+
+    def new_scope(self):
+        return Env(self.types, self.scope.sub_scope())
+
+    def type_of_name(self, n: str):
+        return self.types[self.scope.require(n)]
+
 
 next_id = object
 
@@ -250,3 +266,16 @@ def match_fun_ty(t: Ty):
             return arg, ret
     error("expected a function")
 
+
+def infer(env: Env, level: int, term: Expr):
+    if isinstance(term, EVar):
+        try:
+            return env.type_of_name(term.v)
+        except KeyError:
+            error("variable {} undefined".format(term.v))
+    if isinstance(term, EFun):
+        fn_env = env.new_scope()
+        var_lst = []
+        pn, pt = term.param
+        if pt:
+            inst_ty_ann(level + 1, )

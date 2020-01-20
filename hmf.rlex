@@ -21,3 +21,4 @@ W \s+
 %require tpure
 
 %require invoke
+%require some
