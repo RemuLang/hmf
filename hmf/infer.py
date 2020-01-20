@@ -1,7 +1,7 @@
 from hmf.type import *
 from hmf.expr import *
 from hmf.scope import Scope, Sym
-
+from hmf.pretty import ppt
 from dataclasses import dataclass
 
 
@@ -10,11 +10,19 @@ class Env:
     types: Dict[Sym, Ty]
     scope: Scope
 
+    @classmethod
+    def top(cls):
+        return Env({}, Scope.top())
+
     def new_scope(self):
         return Env(self.types, self.scope.sub_scope())
 
     def type_of_name(self, n: str):
         return self.types[self.scope.require(n)]
+
+    def enter(self, n: str, ty: Ty):
+        sym = self.scope.enter(n)
+        self.types[sym] = ty
 
 
 next_id = object
@@ -135,8 +143,10 @@ def unify(ty1: Ty, ty2: Ty):
         return
     if isinstance(ty1, Var) and isinstance(ty1.ref, Link):
         unify(ty1.ref.ty, ty2)
+        return
     if isinstance(ty2, Var) and isinstance(ty2.ref, Link):
         unify(ty2.ref.ty, ty1)
+        return
     if isinstance(ty1, Var) and isinstance(ty2, Var):
         ref1 = ty1.ref
         ref2 = ty2.ref
@@ -149,17 +159,21 @@ def unify(ty1: Ty, ty2: Ty):
         if isinstance(ref1, Bound) and isinstance(ref2, Bound):
             error("bounds should instantiate")
 
-        if isinstance(ref1, Unbound):
-            occurs_check_adjust_level(ref1.id, ref1.level, ty2)
-            ty1.ref = Link(ty2)
-            return
-        if isinstance(ref2, Unbound):
-            occurs_check_adjust_level(ref2.id, ref2.level, ty1)
-            ty2.ref = Link(ty1)
-            return
+    if isinstance(ty2, Var) and isinstance(ty2.ref, Bound):
+        error("impossible")
+    if isinstance(ty1, Var) and isinstance(ty1.ref, Bound):
+        error("impossible")
 
-        raise TypeError(type(ty1), type(ty2))
-
+    if isinstance(ty2, Var) and isinstance(ty2.ref, Unbound):
+        ref2 = ty2.ref
+        occurs_check_adjust_level(ref2.id, ref2.level, ty1)
+        ty2.ref = Link(ty1)
+        return
+    if isinstance(ty1, Var) and isinstance(ty1.ref, Unbound):
+        ref1 = ty1.ref
+        occurs_check_adjust_level(ref1.id, ref1.level, ty2)
+        ty1.ref = Link(ty2)
+        return
     if isinstance(ty1, Forall) and isinstance(ty2, Forall):
         # TODO: unordered
         if len(ty1.bounds) != (ty2.bounds):
@@ -226,6 +240,7 @@ def generalise(level: int, t: Ty):
             if isinstance(ref, Unbound):
                 if ref.level > level:
                     other_id = ref.id
+                    t.ref = Bound(other_id)
                     if other_id not in var_id_lst:
                         var_id_lst.append(other_id)
                 return
@@ -258,13 +273,21 @@ def match_fun_ty(t: Ty):
     if isinstance(t, Var):
         ref = t.ref
         if isinstance(ref, Link):
-            return match_fun_ty(t)
+            return match_fun_ty(ref.ty)
         if isinstance(ref, Unbound):
             arg = Var(Unbound(object(), ref.level))
             ret = Var(Unbound(object(), ref.level))
             t.ref = Link(Arrow(arg, ret))
             return arg, ret
     error("expected a function")
+
+
+def is_annotated(e: Expr):
+    if isinstance(e, EAnn):
+        return True
+    if isinstance(e, ELet):
+        return is_annotated(e.body)
+    return False
 
 
 def infer(env: Env, level: int, term: Expr):
@@ -276,6 +299,60 @@ def infer(env: Env, level: int, term: Expr):
     if isinstance(term, EFun):
         fn_env = env.new_scope()
         var_lst = []
-        pn, pt = term.param
-        if pt:
-            inst_ty_ann(level + 1, )
+        pn, ann = term.param
+        if ann:
+            ids, ann_ty = ann
+            var_lst_sec, arg_ty = inst_ty_ann(level + 1, ids, ann_ty)
+            var_lst.extend(var_lst_sec)
+        else:
+            arg_ty = Var(Unbound(object(), level + 1))
+            var_lst.append(arg_ty)
+        env.enter(pn, arg_ty)
+        inferred_ret_ty = infer(fn_env, level + 1, term.body)
+        if is_annotated(term.body):
+            ret_ty = inferred_ret_ty
+        else:
+            ret_ty = inst(level + 1, inferred_ret_ty)
+
+        if not all(map(is_mono, var_lst)):
+            error("polymorphc parameter inferred: {}".format(''.join(map(ppt, var_lst))))
+        return generalise(level, Arrow(arg_ty, ret_ty))
+
+    if isinstance(term, ELet):
+        var_name = term.id
+        bound = term.bound
+        body = term.body
+        var_ty = infer(env, level + 1, bound)
+        new_env = env.new_scope()
+        new_env.enter(var_name, var_ty)
+        return infer(new_env, level, body)
+
+    if isinstance(term, EApp):
+        fn_expr = term.f
+        arg = term.arg
+        fn_ty = inst(level + 1, infer(env, level + 1, fn_expr))
+        param_ty, ret_ty = match_fun_ty(fn_ty)
+        infer_arg(env, level + 1, param_ty, arg)
+        return generalise(level, inst(level + 1, ret_ty))
+
+    if isinstance(term, EAnn):
+        _, ty = inst_ty_ann(level, *term.ann)
+        expr_ty = infer(env, level, term.expr)
+        subsume(level, ty, expr_ty)
+        return ty
+    if isinstance(term, EOmit):
+        ty = Var(Unbound(object(), level))
+        return ty
+    if isinstance(term, EInt):
+        return Nom("int")
+    raise TypeError(type(term))
+
+
+def infer_arg(env: Env, level, param_ty, arg_expr):
+    unlink(param_ty)
+
+    arg_ty = infer(env, level, arg_expr)
+    if is_annotated(arg_expr):
+        unify(param_ty, arg_ty)
+    else:
+        subsume(level, param_ty, arg_ty)

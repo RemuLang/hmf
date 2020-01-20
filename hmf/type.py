@@ -30,7 +30,6 @@ class Forall(Ty):
     ty: Ty
 
 
-@dataclass
 class Var(Ty):
     ref: TVar
 
