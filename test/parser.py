@@ -18,3 +18,4 @@ EAnn(expr=EApp(f=EApp(f=EApp(f=EApp(f=EVar(v='func'), arg=EVar(v='a')), arg=EVar
 
 print(parse("fun (a: some a. a -> b) -> a"))
 print(parse("fun (a: forall a. a -> b) -> a"))
+print(parse("fun f -> fun a -> f a"))

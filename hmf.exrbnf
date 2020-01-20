@@ -5,6 +5,7 @@ ID   : <ID> { *$0 };
 expr : ann { $0 }
      | 'let' ID '=' expr 'in' expr { ELet($1, $3, $5) }
      | 'fun' param '->' expr       { EFun($1, $3) }
+     | 'let' ID ':' ann_type '=' expr 'in' expr { ELet($1, EAnn($5, $3), $7) }
      ;
 
 

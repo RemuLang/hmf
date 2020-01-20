@@ -36,6 +36,9 @@ class Var(Ty):
     def __init__(self, ref: TVar):
         self.ref = ref
 
+    def __repr__(self):
+        return '{}'.format(self.ref)
+
 
 @dataclass(order=True, frozen=True)
 class Unbound:

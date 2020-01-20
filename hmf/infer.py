@@ -1,7 +1,7 @@
 from hmf.type import *
 from hmf.expr import *
 from hmf.scope import Scope, Sym
-from hmf.pretty import ppt
+from hmf.pretty import ppt, PPT
 from dataclasses import dataclass
 
 
@@ -176,7 +176,7 @@ def unify(ty1: Ty, ty2: Ty):
         return
     if isinstance(ty1, Forall) and isinstance(ty2, Forall):
         # TODO: unordered
-        if len(ty1.bounds) != (ty2.bounds):
+        if len(ty1.bounds) != len(ty2.bounds):
             error("emm")
         n = len(ty1.bounds)
         gen_var_lst = [Var(Gen(object())) for _ in range(n)]
@@ -185,13 +185,13 @@ def unify(ty1: Ty, ty2: Ty):
         unify(gen_ty1, gen_ty2)
         if not escape_check(gen_var_lst, ty1, ty2):
             return
-
-    error("cannot unify types {} {}".format(ty1, ty2))
+    ppt = PPT()
+    error("cannot unify types {} {}".format(ppt.show(ty1), ppt.show(ty2)))
 
 
 def subst_with_new_vars(level, var_id_lst, ty: Ty):
     var_lst = [Var(Unbound(object(), level)) for _ in var_id_lst]
-    return var_id_lst, subst_bound_vars(var_id_lst, var_lst, ty)
+    return var_lst, subst_bound_vars(var_id_lst, var_lst, ty)
 
 
 def inst_ty_ann(level: int, var_id_lst: list, ty: Ty):
@@ -219,9 +219,10 @@ def subsume(level: int, t1: Ty, t2: Ty):
         gen_t1 = subst_bound_vars(ut1.bounds, gen_var_lst, ut1.ty)
         unify(gen_t1, inst_t2)
         if escape_check(gen_var_lst, ut1, t2):
-            error("type {} not instance of {}".format(ut1, t2))
+            ppt = PPT()
+            error("type {} not instance of {}".format(ppt.show(ut1), ppt.show(t2)))
         return
-    unify(t1, inst_t2)
+    unify(ut1, inst_t2)
 
 
 def generalise(level: int, t: Ty):
@@ -301,8 +302,7 @@ def infer(env: Env, level: int, term: Expr):
         var_lst = []
         pn, ann = term.param
         if ann:
-            ids, ann_ty = ann
-            var_lst_sec, arg_ty = inst_ty_ann(level + 1, ids, ann_ty)
+            var_lst_sec, arg_ty = inst_ty_ann(level + 1, *ann)
             var_lst.extend(var_lst_sec)
         else:
             arg_ty = Var(Unbound(object(), level + 1))
@@ -316,7 +316,8 @@ def infer(env: Env, level: int, term: Expr):
 
         if not all(map(is_mono, var_lst)):
             error("polymorphc parameter inferred: {}".format(''.join(map(ppt, var_lst))))
-        return generalise(level, Arrow(arg_ty, ret_ty))
+        ret_ty = generalise(level, Arrow(arg_ty, ret_ty))
+        return ret_ty
 
     if isinstance(term, ELet):
         var_name = term.id
@@ -333,7 +334,8 @@ def infer(env: Env, level: int, term: Expr):
         fn_ty = inst(level + 1, infer(env, level + 1, fn_expr))
         param_ty, ret_ty = match_fun_ty(fn_ty)
         infer_arg(env, level + 1, param_ty, arg)
-        return generalise(level, inst(level + 1, ret_ty))
+        ret_ty = generalise(level, inst(level + 1, ret_ty))
+        return ret_ty
 
     if isinstance(term, EAnn):
         _, ty = inst_ty_ann(level, *term.ann)

@@ -20,6 +20,16 @@ def ppt(t):
     return io.getvalue()
 
 
+class PPT:
+    def __init__(self):
+        d = self.d = MissingDict(lambda _: 'a{}'.format(len(d)))
+
+    def show(self, t: Ty):
+        io = StringIO()
+        ppt_io(t, io, self.d)
+        return io.getvalue()
+
+
 def ppt_io(t: Ty, io: StringIO, miss: MissingDict):
     if isinstance(t, Forall):
         s1 = ' '.join(map(lambda x: miss[x], t.bounds))
@@ -55,7 +65,7 @@ def ppt_io(t: Ty, io: StringIO, miss: MissingDict):
         io.write('(')
         ppt_io(t.arg, io, miss)
         io.write(' -> ')
-        ppt_io(t.arg, io, miss)
+        ppt_io(t.ret, io, miss)
         io.write(')')
         return
     raise TypeError(type(t))
