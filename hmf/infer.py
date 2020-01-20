@@ -307,7 +307,7 @@ def infer(env: Env, level: int, term: Expr):
         else:
             arg_ty = Var(Unbound(object(), level + 1))
             var_lst.append(arg_ty)
-        env.enter(pn, arg_ty)
+        fn_env.enter(pn, arg_ty)
         inferred_ret_ty = infer(fn_env, level + 1, term.body)
         if is_annotated(term.body):
             ret_ty = inferred_ret_ty

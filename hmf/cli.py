@@ -9,7 +9,7 @@ from prompt_toolkit.shortcuts import prompt, PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
 import re
 
-keywords = ['some', 'forall', 'let', 'fun']
+keywords = ['some', 'forall', 'let', 'fun', 'in']
 operators = ['->', '.']
 completer = WordCompleter(keywords)
 
@@ -30,8 +30,9 @@ session = PromptSession(completer=completer, lexer=PygmentsLexer(HMFLexer), hist
 
 
 def repl():
+    print('Press ESC+Enter to accept.')
     while True:
-        inp: str = session.prompt('check HMF> ')
+        inp: str = session.prompt('check HMF> ', multiline=True)
         inp = inp.strip()
         if inp.lower() == ':q':
             return
